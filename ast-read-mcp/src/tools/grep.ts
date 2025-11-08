@@ -23,6 +23,8 @@ import {
   getCodeSnippet,
   isCodeFile,
   isSearchableFile,
+  isMultiLanguageSupported,
+  getLanguageParser,
 } from "./shared.js";
 
 /**
@@ -238,7 +240,7 @@ Example: Find all functions named "handle*":
       const filesWithMatches = new Set<string>();
 
       for (const file of filesToSearch) {
-        const matches = this.searchFile(file, params);
+        const matches = await this.searchFile(file, params);
         allMatches.push(...matches);
         if (matches.length > 0) {
           filesWithMatches.add(file);
@@ -285,7 +287,7 @@ Example: Find all functions named "handle*":
   /**
    * Search a single file for matches
    */
-  private searchFile(filePath: string, params: AstGrepInput): Match[] {
+  private async searchFile(filePath: string, params: AstGrepInput): Promise<Match[]> {
     try {
       const content = readFileContent(filePath);
       const lines = content.split("\n");
@@ -295,7 +297,42 @@ Example: Find all functions named "handle*":
         // For non-code files, use text-based search
         return this.searchFileAsText(filePath, content, lines, params);
       }
+
+      // Check if this is a multi-language file (Python, Rust, C#)
+      const language = detectLanguage(filePath);
+      if (isMultiLanguageSupported(language)) {
+        const langParser = await getLanguageParser(language);
+        if (langParser) {
+          const contextBefore = params.context ?? params.context_before ?? 3;
+          const contextAfter = params.context ?? params.context_after ?? 3;
+          const searchType = params.type?.toLowerCase() || "all";
+          const modifiers = params.modifiers?.map(m => m.toLowerCase()) || [];
+          
+          // Call language-specific search function
+          let searchFunc;
+          if (language === "python" && langParser.searchPythonAST) {
+            searchFunc = langParser.searchPythonAST;
+          } else if (language === "rust" && langParser.searchRustAST) {
+            searchFunc = langParser.searchRustAST;
+          } else if (language === "csharp" && langParser.searchCSharpAST) {
+            searchFunc = langParser.searchCSharpAST;
+          }
+          
+          if (searchFunc) {
+            return await searchFunc(
+              content,
+              params.pattern,
+              searchType,
+              modifiers,
+              params.case_insensitive || false,
+              contextBefore,
+              contextAfter
+            );
+          }
+        }
+      }
       
+      // Parse with Babel for JavaScript/TypeScript
       const ast = parseWithBabel(content, filePath);
       const matches: Match[] = [];
 

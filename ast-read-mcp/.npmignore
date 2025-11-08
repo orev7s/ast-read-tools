@@ -1,0 +1,24 @@
+# Source files
+src/
+tsconfig.json
+
+# Development files
+*.md
+!README.md
+test-*.js
+test-samples/
+
+# Git files
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+
+# Node
+node_modules/
+
+# Build artifacts
+*.log
+*.tgz

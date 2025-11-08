@@ -10,6 +10,8 @@ import {
   extractJSDoc,
   parseWithBabel,
   readFileContent,
+  isMultiLanguageSupported,
+  getLanguageParser,
 } from "./shared.js";
 
 // Fix for CommonJS default export in ES modules
@@ -191,7 +193,7 @@ export class AstReadTool {
           return this.readFull(params.file_path, content);
 
         case "outline":
-          return this.readOutline(params, content, language);
+          return await this.readOutline(params, content, language);
 
         case "lines":
           if (!params.line) {
@@ -213,7 +215,7 @@ export class AstReadTool {
               params.mode
             );
           }
-          return this.readTarget(params, content, language);
+          return await this.readTarget(params, content, language);
 
         default:
           return this.createError(
@@ -340,10 +342,53 @@ export class AstReadTool {
   /**
    * Read file outline using Babel parser
    */
-  private readOutline(params: ReadFileInput, content: string, language: string) {
+  private async readOutline(params: ReadFileInput, content: string, language: string) {
     const filePath = params.file_path;
     try {
-      // Parse with Babel
+      // Check if this is a multi-language file (Python, Rust, C#)
+      if (isMultiLanguageSupported(language)) {
+        const langParser = await getLanguageParser(language);
+        if (langParser) {
+          // Call language-specific extract function
+          let outline;
+          if (language === "python" && langParser.extractPythonOutline) {
+            outline = langParser.extractPythonOutline(content);
+          } else if (language === "rust" && langParser.extractRustOutline) {
+            outline = langParser.extractRustOutline(content);
+          } else if (language === "csharp" && langParser.extractCSharpOutline) {
+            outline = await langParser.extractCSharpOutline(content);
+          }
+          
+          if (outline) {
+            const stats = {
+              function_count: outline.functions.length,
+              class_count: outline.classes.length,
+              import_count: outline.imports.length,
+              export_count: outline.exports.length,
+            };
+
+            const fullData = {
+              success: true,
+              mode: "outline" as const,
+              file_path: filePath,
+              language: language,
+              structure: outline,
+              stats: stats,
+            };
+
+            if (params.verbose === false) {
+              return {
+                ...fullData,
+                summary: `✅ File analyzed: ${stats.function_count} function${stats.function_count !== 1 ? 's' : ''}, ${stats.class_count} class${stats.class_count !== 1 ? 'es' : ''}, ${stats.import_count} import${stats.import_count !== 1 ? 's' : ''}, ${stats.export_count} export${stats.export_count !== 1 ? 's' : ''}`,
+              };
+            }
+
+            return fullData;
+          }
+        }
+      }
+
+      // Parse with Babel (for JavaScript/TypeScript)
       const ast = parser.parse(content, {
         sourceType: "module",
         plugins: [
@@ -647,13 +692,13 @@ export class AstReadTool {
   /**
    * Read specific target (function, class, method, etc.)
    */
-  private readTarget(params: ReadFileInput, content: string, language: string) {
+  private async readTarget(params: ReadFileInput, content: string, language: string) {
     const targetParts = params.target!.split(":");
     const targetType = targetParts[0];
     const targetPath = targetParts[1] || "";
 
     if (targetType === "imports") {
-      const outline = this.readOutline(params, content, language);
+      const outline = await this.readOutline(params, content, language);
       if ("success" in outline && outline.success && "structure" in outline && outline.structure) {
         const importsCount = outline.structure.imports.length;
         const result = {
@@ -676,7 +721,7 @@ export class AstReadTool {
     }
 
     if (targetType === "exports") {
-      const outline = this.readOutline(params, content, language);
+      const outline = await this.readOutline(params, content, language);
       if ("success" in outline && outline.success && "structure" in outline && outline.structure) {
         const exportsCount = outline.structure.exports.length;
         const result = {

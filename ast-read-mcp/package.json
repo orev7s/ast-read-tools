@@ -1,12 +1,17 @@
 {
-  "name": "@v80qk/ast-read-mcp",
-  "version": "1.1.0",
+  "name": "ast-read-tools",
+  "version": "1.0.1",
   "description": "AST-aware file reading and code search MCP server - Intelligent code exploration with structure understanding",
   "main": "./build/index.js",
   "bin": {
-    "ast-read-mcp": "build/index.js"
+    "ast-read-tools": "build/index.js"
   },
   "type": "module",
+  "files": [
+    "build/**/*",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsx src/index.ts",
@@ -21,15 +26,32 @@
     "search",
     "code-exploration",
     "intelligent-reading",
-    "code-search"
+    "code-search",
+    "ast-tools",
+    "mcp-server",
+    "code-analysis",
+    "tree-sitter",
+    "babel-parser"
   ],
   "author": "v80qk",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/orev7s/ast-read-tools"
+  },
+  "homepage": "https://github.com/orev7s/ast-read-tools#readme",
+  "bugs": {
+    "url": "https://github.com/orev7s/ast-read-tools/issues"
+  },
   "dependencies": {
     "@babel/parser": "7.28.5",
     "@babel/traverse": "7.28.5",
     "@babel/types": "7.28.5",
     "@modelcontextprotocol/sdk": "^1.21.0",
+    "tree-sitter": "0.25.0",
+    "tree-sitter-c-sharp": "0.23.1",
+    "tree-sitter-rust": "0.24.0",
+    "web-tree-sitter": "0.25.10",
     "zod": "^4.1.12"
   },
   "devDependencies": {

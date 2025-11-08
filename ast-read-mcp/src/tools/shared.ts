@@ -19,6 +19,10 @@ export function detectLanguage(filePath: string): string {
     ".tsx": "typescript",
     ".mjs": "javascript",
     ".cjs": "javascript",
+    ".py": "python",
+    ".pyw": "python",
+    ".rs": "rust",
+    ".cs": "csharp",
   };
   return langMap[ext] || "javascript";
 }
@@ -28,7 +32,7 @@ export function detectLanguage(filePath: string): string {
  */
 export function isCodeFile(filePath: string): boolean {
   const ext = path.extname(filePath).toLowerCase();
-  return [".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs"].includes(ext);
+  return [".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".py", ".pyw", ".rs", ".cs"].includes(ext);
 }
 
 /**
@@ -289,4 +293,31 @@ export function getCodeSnippet(
 ): string {
   const lines = content.split("\n");
   return lines.slice(startLine - 1, endLine).join("\n");
+}
+
+/**
+ * Check if language is supported by multi-language parsers
+ */
+export function isMultiLanguageSupported(language: string): boolean {
+  return ["python", "rust", "csharp"].includes(language);
+}
+
+/**
+ * Get parser module for language
+ * Returns null for JavaScript/TypeScript (uses existing Babel parser)
+ */
+export async function getLanguageParser(language: string): Promise<any> {
+  switch (language) {
+    case "python":
+      const pythonParser = await import("../parsers/python.js");
+      return pythonParser;
+    case "rust":
+      const rustParser = await import("../parsers/rust.js");
+      return rustParser;
+    case "csharp":
+      const csharpParser = await import("../parsers/csharp.js");
+      return csharpParser;
+    default:
+      return null; // Use Babel for JavaScript/TypeScript
+  }
 }
